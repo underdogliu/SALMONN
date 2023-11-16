@@ -72,13 +72,14 @@ def gradio_ask(user_message, chatbot, chat_state):
     return gr.update(interactive=False, placeholder='Currently only single round conversations are supported.'), chatbot, chat_state
 
 def gradio_answer(chatbot, chat_state, num_beams, temperature, top_p):
-    llm_message = model.generate(
-        wav_path=chat_state[0],
-        prompt=chat_state[1],
-        num_beams=num_beams,
-        temperature=temperature,
-        top_p=top_p,
-    )
+    with torch.cuda.amp.autocast(dtype=torch.float16):
+        llm_message = model.generate(
+            wav_path=chat_state[0],
+            prompt=chat_state[1],
+            num_beams=num_beams,
+            temperature=temperature,
+            top_p=top_p,
+        )
     chatbot[-1][1] = llm_message[0]
     return chatbot, chat_state
 
