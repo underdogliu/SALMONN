@@ -67,11 +67,13 @@ For SALMONN-13B v1, you need to use the following dependencies:
 ## ✨ Citation
 If you find SALMONN useful, please cite our paper:
 ```
-@article{tang2023salmonn,
+@inproceedings{
+  tang2024salmonn,
   title={{SALMONN}: Towards Generic Hearing Abilities for Large Language Models},
-  author={Tang, Changli and Yu, Wenyi and Sun, Guangzhi and Chen, Xianzhao and Tan, Tian and Li, Wei and Lu, Lu and Ma, Zejun and Zhang, Chao},
-  journal={arXiv preprint arXiv:2310.13289},
-  year={2023}
+  author={Changli Tang and Wenyi Yu and Guangzhi Sun and Xianzhao Chen and Tian Tan and Wei Li and Lu Lu and Zejun MA and Chao Zhang},
+  booktitle={The Twelfth International Conference on Learning Representations},
+  year={2024},
+  url={https://openreview.net/forum?id=14rn7HpKVk}
 }
 ```
 ## All Thanks to Our Contributors 
