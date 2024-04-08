@@ -1,4 +1,4 @@
-# Copyright (2023) Tsinghua University, Bytedance Ltd. and/or its affiliates
+# Copyright (2024) Tsinghua University, Bytedance Ltd. and/or its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,36 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gradio as gr
 import argparse
-from model import SALMONN
-import torch
 
-class ff:
-    def generate(self, wav_path, prompt, prompt_pattern, num_beams, temperature, top_p):
-        print(f'wav_path: {wav_path}, prompt: {prompt}, temperature: {temperature}, num_beams: {num_beams}, top_p: {top_p}')
-        return "I'm sorry, but I cannot answer that question as it is not clear what you are asking. Can you please provide more context or clarify your question?"
+import torch
+from transformers import WhisperFeatureExtractor
+import gradio as gr
+
+from config import Config
+from models.salmonn import SALMONN
+from utils import prepare_one_sample
+
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--cfg-path", type=str, required=True, help='path to configuration file')
 parser.add_argument("--device", type=str, default="cuda:0")
-parser.add_argument("--ckpt_path", type=str, default=None)
-parser.add_argument("--whisper_path", type=str, default=None)
-parser.add_argument("--beats_path", type=str, default=None)
-parser.add_argument("--vicuna_path", type=str, default=None)
-parser.add_argument("--low_resource", action='store_true', default=False)
 parser.add_argument("--port", default=9527)
+parser.add_argument(
+    "--options",
+    nargs="+",
+    help="override some settings in the used config, the key-value pair "
+    "in xxx=yyy format will be merged into config file (deprecate), "
+    "change to --cfg-options instead.",
+)
 
 args = parser.parse_args()
-# model = ff()
-model = SALMONN(
-    ckpt=args.ckpt_path,
-    whisper_path=args.whisper_path,
-    beats_path=args.beats_path,
-    vicuna_path=args.vicuna_path,
-    low_resource=args.low_resource
-)
+cfg = Config(args)
+
+model = SALMONN.from_config(cfg.config.model)
 model.to(args.device)
 model.eval()
+
+wav_processor = WhisperFeatureExtractor.from_pretrained(cfg.config.model.whisper_path)
 
 # gradio 
 def gradio_reset(chat_state):
@@ -73,13 +74,13 @@ def gradio_ask(user_message, chatbot, chat_state):
     return gr.update(interactive=False, placeholder='Currently only single round conversations are supported.'), chatbot, chat_state
 
 def gradio_answer(chatbot, chat_state, num_beams, temperature, top_p):
+    samples = prepare_one_sample(chat_state[0], wav_processor)
+    prompt = [
+        cfg.config.model.prompt_template.format(chat_state[1].strip())
+    ]
     with torch.cuda.amp.autocast(dtype=torch.float16):
         llm_message = model.generate(
-            wav_path=chat_state[0],
-            prompt=chat_state[1],
-            num_beams=num_beams,
-            temperature=temperature,
-            top_p=top_p,
+            samples, cfg.config.generate, prompts=prompt
         )
     chatbot[-1][1] = llm_message[0]
     return chatbot, chat_state
@@ -157,7 +158,7 @@ with gr.Blocks() as demo:
     upload_button.click(upload_speech, [speech, text_input, chat_state], [speech, text_input, upload_button, chat_state])
 
     text_input.submit(gradio_ask, [text_input, chatbot, chat_state], [text_input, chatbot, chat_state]).then(
-        gradio_answer, [chatbot, chat_state, num_beams, temperature, top_p], [chatbot, chat_state]
+        gradio_answer, [chatbot, chat_state, cfg], [chatbot, chat_state]
     )
     clear.click(gradio_reset, [chat_state], [chatbot, speech, text_input, upload_button, chat_state], queue=False)
 

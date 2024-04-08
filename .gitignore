@@ -161,3 +161,8 @@ cython_debug/
 
 **/.DS_Store
 launch.sh
+
+*.pyc
+/output
+arnold.sh
+/configs_local
